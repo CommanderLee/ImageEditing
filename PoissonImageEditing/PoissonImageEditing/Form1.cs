@@ -26,9 +26,18 @@ namespace PoissonImageEditing
         private int                 srcWidth, srcHeight;
         private int                 tarWidth, tarHeight;
 
+        // Control flag for drawing boundry on the source image
+        private Image<Bgr, Byte>    newSrcImg;
+        private bool                isDrawing;
+        private List<Point>         clickList;
+        private List<Point>         boundryList;
+
         public FormImageEditing()
         {
             InitializeComponent();
+
+            clickList = new List<Point>();
+            boundryList = new List<Point>();
         }
 
         private void Form1_Load(object sender, EventArgs e)
@@ -70,6 +79,78 @@ namespace PoissonImageEditing
                 // I(x, y, {B,G,R}): img.Data[x, y, {0,1,2}]. x: row No. y: col No.
                 pictureBoxB.Image = tarImg.ToBitmap();
             }
+        }
+
+        /**
+         * Currenty, I just implement the rectangular version. 
+         * - Zhen.
+         */
+        private void pictureBoxA_Click(object sender, EventArgs e)
+        {
+            if (isDrawing)
+            {
+                var mouseEvent = e as MouseEventArgs;
+                if (mouseEvent != null)
+                {
+                    // Record the point
+                    Console.WriteLine(String.Format("X:{0}, Y:{1}", mouseEvent.X, mouseEvent.Y));
+                    // Inverse the order to fit the OpenCV order of index.
+                    // So that x: row number, y: col number
+                    clickList.Add(new Point(mouseEvent.Y, mouseEvent.X));
+
+                    // Show the point as red
+                    newSrcImg[mouseEvent.Y, mouseEvent.X] = new Bgr(Color.Red);
+
+                    // Rectangular version:
+                    if (clickList.Count == 2)
+                    {
+                        Point A = clickList.ElementAt<Point>(0), B = clickList.ElementAt<Point>(1);
+                        // Assume A:top-left, B:bottom-right
+                        // +----------+
+                        // +          +
+                        // +----------+
+                        for (int i = A.X; i <= B.X; ++i)
+                        {
+                            boundryList.Add(new Point(i, A.Y));
+                            boundryList.Add(new Point(i, B.Y));
+
+                            newSrcImg[i, A.Y] = new Bgr(Color.Red);
+                            newSrcImg[i, B.Y] = new Bgr(Color.Red);
+                        }
+
+                        // -++++++++++-
+                        // -          -
+                        // -++++++++++-
+                        for (int j = A.Y + 1; j < B.Y; ++j)
+                        {
+                            boundryList.Add(new Point(A.X, j));
+                            boundryList.Add(new Point(B.X, j));
+
+                            newSrcImg[A.X, j] = new Bgr(Color.Red);
+                            newSrcImg[B.X, j] = new Bgr(Color.Red);
+                        }
+
+                        isDrawing = false;
+                    }
+
+                    pictureBoxA.Image = newSrcImg.ToBitmap();
+                }
+            }
+        }
+
+        private void buttonDraw_Click(object sender, EventArgs e)
+        {
+            isDrawing = true;
+            newSrcImg = srcImg.Copy();
+        }
+
+        private void buttonClear_Click(object sender, EventArgs e)
+        {
+            clickList.Clear();
+            boundryList.Clear();
+            isDrawing = false;
+            if (srcImg != null)
+                pictureBoxA.Image = srcImg.ToBitmap();
         }
     }
 }
