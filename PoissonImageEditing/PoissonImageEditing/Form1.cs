@@ -36,8 +36,10 @@ namespace PoissonImageEditing
         // List of content point, and mapping to id
         private List<Point>         contentList;
         private Point[]             contentArray;
-        private int[,]              pointID;
         private Point               selCenterPoint;
+
+        // [0...]: content point, -1: boundry point, -2: other
+        private int[,]              pointID;
 
         // Control of placing the selected image on the target image
         private Image<Bgr, Byte>    newTarImg;
@@ -46,6 +48,9 @@ namespace PoissonImageEditing
 
         // Bias from selected source image to the target image
         private int                 biasX, biasY;
+
+        // Result of the cloning
+        private Image<Bgr, Byte>    resultImg;
 
         public FormImageEditing()
         {
@@ -124,43 +129,54 @@ namespace PoissonImageEditing
                     if (clickList.Count == 2)
                     {
                         // Get boundry list from the click list
-                        Point A = clickList.ElementAt<Point>(0), B = clickList.ElementAt<Point>(1);
-                        selWidth = B.Y - A.Y + 1;
-                        selHeight = B.X - A.X + 1;
-                        selCenterPoint = new Point((A.X + B.X) / 2, (A.Y + B.Y) / 2);
+                        Point pointA = clickList.ElementAt<Point>(0), pointB = clickList.ElementAt<Point>(1);
+                        selWidth = pointB.Y - pointA.Y + 1;
+                        selHeight = pointB.X - pointA.X + 1;
+                        selCenterPoint = new Point((pointA.X + pointB.X) / 2, (pointA.Y + pointB.Y) / 2);
                         Console.WriteLine(String.Format("Selected: heightxwidth: {0}x{1}", selHeight, selWidth));
+
+                        // Initialize the mapping
+                        for (int i = 0; i < srcHeight; ++i)
+                            for (int j = 0; j < srcWidth; ++j)
+                                pointID[i, j] = -2;
 
                         // Assume A:top-left, B:bottom-right
                         // +----------+
                         // +          +
                         // +----------+
-                        for (int i = A.X; i <= B.X; ++i)
+                        for (int i = pointA.X; i <= pointB.X; ++i)
                         {
-                            boundryList.Add(new Point(i, A.Y));
-                            boundryList.Add(new Point(i, B.Y));
+                            boundryList.Add(new Point(i, pointA.Y));
+                            boundryList.Add(new Point(i, pointB.Y));
 
-                            newSrcImg[i, A.Y] = new Bgr(Color.Red);
-                            newSrcImg[i, B.Y] = new Bgr(Color.Red);
+                            newSrcImg[i, pointA.Y] = new Bgr(Color.Red);
+                            newSrcImg[i, pointB.Y] = new Bgr(Color.Red);
+
+                            pointID[i, pointA.Y] = -1;
+                            pointID[i, pointB.Y] = -1;
                         }
 
                         // -++++++++++-
                         // -          -
                         // -++++++++++-
-                        for (int j = A.Y + 1; j < B.Y; ++j)
+                        for (int j = pointA.Y + 1; j < pointB.Y; ++j)
                         {
-                            boundryList.Add(new Point(A.X, j));
-                            boundryList.Add(new Point(B.X, j));
+                            boundryList.Add(new Point(pointA.X, j));
+                            boundryList.Add(new Point(pointB.X, j));
 
-                            newSrcImg[A.X, j] = new Bgr(Color.Red);
-                            newSrcImg[B.X, j] = new Bgr(Color.Red);
+                            newSrcImg[pointA.X, j] = new Bgr(Color.Red);
+                            newSrcImg[pointB.X, j] = new Bgr(Color.Red);
+
+                            pointID[pointA.X, j] = -1;
+                            pointID[pointB.X, j] = -1;
                         }
 
-                        // Get content list and set the mapping
+                        // Get content list and set the mapping of pointID
                         int cntID = 0;
                         contentList.Clear();
-                        for (int i = A.X + 1; i < B.X; ++i)
+                        for (int i = pointA.X + 1; i < pointB.X; ++i)
                         {
-                            for (int j = A.Y + 1; j < B.Y; ++j)
+                            for (int j = pointA.Y + 1; j < pointB.Y; ++j)
                             {
                                 contentList.Add(new Point(i, j));
                                 pointID[i, j] = cntID;
@@ -208,9 +224,60 @@ namespace PoissonImageEditing
                 pictureBoxB.Image = tarImg.ToBitmap();
         }
 
+        /**
+         * Poisson Image Editing
+         * Based on Poisson Image Editing. P Perez et. al. SIGGRAPH 2003
+         * -Zhen.
+         */
         private void buttonClone_Click(object sender, EventArgs e)
         {
+            int boundryNum = boundryList.Count, contentNum = contentArray.Length;
+            int pointNum = boundryNum + contentNum;
+            resultImg = newTarImg.Copy();
 
+            // To solve AX=B, get matrix A and B first
+            LA.Matrix<double> matA = LA.Matrix<double>.Build.Sparse(pointNum, pointNum);
+            LA.Matrix<double> matB = LA.Matrix<double>.Build.Dense(pointNum, 1);
+
+            // for color tunnel B, G, R
+            for (int c = 0; c <= 2; ++c)
+            {
+                // Set sparse matrix A to zero
+                matA.Clear();
+                matB.Clear();
+
+                // id: 0~boundryNum-1: boundry point; boundryNum~pointNum-1: contentNum 
+                int id = 0;
+
+                // top, right, bottom, left
+                int[] dx = new int[] {-1, 0, 1, 0};
+                int[] dy = new int[] { 0, 1, 0, -1 };
+                List<Point> Np = new List<Point>();
+                foreach (Point boundryP in boundryList)
+                {
+                    // Use equation No.7 in the paper
+                    Np.Clear();
+                    for (int i = 0; i < 4; ++i)
+                    {
+                        Point q = new Point(boundryP.X + dx[i] + biasX, boundryP.Y + dy[i] + biasY);
+                        if (q.X >= 0 && q.X < tarHeight && q.Y >= 0 && q.Y < tarWidth)
+                        {
+                            // Point q is inside the area
+                            Np.Add(q);
+                        }
+                    }
+
+                    matA.At(id, id, Np.Count);
+                    // TODO: other elements of the equation
+                }
+
+                foreach (Point contentP in contentArray)
+                {
+                    // Use equation No.8 in the paper
+                }
+            }
+
+            pictureBoxResult.Image = resultImg.ToBitmap();
         }
 
         private void pictureBoxB_Click(object sender, EventArgs e)

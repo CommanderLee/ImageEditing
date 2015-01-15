@@ -37,11 +37,11 @@
             this.buttonDraw = new System.Windows.Forms.Button();
             this.buttonLoadA = new System.Windows.Forms.Button();
             this.panelBtn2 = new System.Windows.Forms.Panel();
+            this.buttonClear2 = new System.Windows.Forms.Button();
+            this.buttonClone = new System.Windows.Forms.Button();
+            this.buttonPlace = new System.Windows.Forms.Button();
             this.buttonLoadB = new System.Windows.Forms.Button();
             this.panelImgResult = new System.Windows.Forms.Panel();
-            this.buttonPlace = new System.Windows.Forms.Button();
-            this.buttonClone = new System.Windows.Forms.Button();
-            this.buttonClear2 = new System.Windows.Forms.Button();
             this.pictureBoxResult = new System.Windows.Forms.PictureBox();
             this.panelImg1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBoxA)).BeginInit();
@@ -153,6 +153,39 @@
             this.panelBtn2.Size = new System.Drawing.Size(200, 450);
             this.panelBtn2.TabIndex = 3;
             // 
+            // buttonClear2
+            // 
+            this.buttonClear2.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.buttonClear2.Location = new System.Drawing.Point(0, 150);
+            this.buttonClear2.Name = "buttonClear2";
+            this.buttonClear2.Size = new System.Drawing.Size(196, 50);
+            this.buttonClear2.TabIndex = 2;
+            this.buttonClear2.Text = "Clear";
+            this.buttonClear2.UseVisualStyleBackColor = true;
+            this.buttonClear2.Click += new System.EventHandler(this.buttonClear2_Click);
+            // 
+            // buttonClone
+            // 
+            this.buttonClone.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.buttonClone.Location = new System.Drawing.Point(0, 225);
+            this.buttonClone.Name = "buttonClone";
+            this.buttonClone.Size = new System.Drawing.Size(196, 50);
+            this.buttonClone.TabIndex = 3;
+            this.buttonClone.Text = "Clone";
+            this.buttonClone.UseVisualStyleBackColor = true;
+            this.buttonClone.Click += new System.EventHandler(this.buttonClone_Click);
+            // 
+            // buttonPlace
+            // 
+            this.buttonPlace.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            this.buttonPlace.Location = new System.Drawing.Point(0, 75);
+            this.buttonPlace.Name = "buttonPlace";
+            this.buttonPlace.Size = new System.Drawing.Size(196, 50);
+            this.buttonPlace.TabIndex = 1;
+            this.buttonPlace.Text = "Place Image";
+            this.buttonPlace.UseVisualStyleBackColor = true;
+            this.buttonPlace.Click += new System.EventHandler(this.buttonPlace_Click);
+            // 
             // buttonLoadB
             // 
             this.buttonLoadB.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
@@ -175,44 +208,12 @@
             this.panelImgResult.Size = new System.Drawing.Size(870, 920);
             this.panelImgResult.TabIndex = 5;
             // 
-            // buttonPlace
-            // 
-            this.buttonPlace.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            this.buttonPlace.Location = new System.Drawing.Point(0, 75);
-            this.buttonPlace.Name = "buttonPlace";
-            this.buttonPlace.Size = new System.Drawing.Size(196, 50);
-            this.buttonPlace.TabIndex = 1;
-            this.buttonPlace.Text = "Place Image";
-            this.buttonPlace.UseVisualStyleBackColor = true;
-            this.buttonPlace.Click += new System.EventHandler(this.buttonPlace_Click);
-            // 
-            // buttonClone
-            // 
-            this.buttonClone.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            this.buttonClone.Location = new System.Drawing.Point(0, 225);
-            this.buttonClone.Name = "buttonClone";
-            this.buttonClone.Size = new System.Drawing.Size(196, 50);
-            this.buttonClone.TabIndex = 3;
-            this.buttonClone.Text = "Clone";
-            this.buttonClone.UseVisualStyleBackColor = true;
-            this.buttonClone.Click += new System.EventHandler(this.buttonClone_Click);
-            // 
-            // buttonClear2
-            // 
-            this.buttonClear2.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            this.buttonClear2.Location = new System.Drawing.Point(0, 150);
-            this.buttonClear2.Name = "buttonClear2";
-            this.buttonClear2.Size = new System.Drawing.Size(196, 50);
-            this.buttonClear2.TabIndex = 2;
-            this.buttonClear2.Text = "Clear";
-            this.buttonClear2.UseVisualStyleBackColor = true;
-            this.buttonClear2.Click += new System.EventHandler(this.buttonClear2_Click);
-            // 
             // pictureBoxResult
             // 
             this.pictureBoxResult.Location = new System.Drawing.Point(0, 0);
             this.pictureBoxResult.Name = "pictureBoxResult";
             this.pictureBoxResult.Size = new System.Drawing.Size(870, 920);
+            this.pictureBoxResult.SizeMode = System.Windows.Forms.PictureBoxSizeMode.AutoSize;
             this.pictureBoxResult.TabIndex = 0;
             this.pictureBoxResult.TabStop = false;
             // 
@@ -238,6 +239,7 @@
             this.panelBtn1.ResumeLayout(false);
             this.panelBtn2.ResumeLayout(false);
             this.panelImgResult.ResumeLayout(false);
+            this.panelImgResult.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBoxResult)).EndInit();
             this.ResumeLayout(false);
 
