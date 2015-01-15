@@ -16,6 +16,8 @@ using Emgu.CV.Structure;
 // Using 'LA.Matrix' to avoid conflit with Emgu.CV.Matrix
 using MathNet.Numerics;
 using LA = MathNet.Numerics.LinearAlgebra;
+using MathNet.Numerics.LinearAlgebra.Double.Solvers;
+using MathNet.Numerics.LinearAlgebra.Solvers;
 
 namespace PoissonImageEditing
 {
@@ -184,7 +186,6 @@ namespace PoissonImageEditing
                             }
                         }
                         contentArray = contentList.ToArray();
-                        Console.WriteLine("List: " + contentList.Count);
                         Console.WriteLine("Array: " + contentArray.Length);
 
                         isDrawing = false;
@@ -231,49 +232,101 @@ namespace PoissonImageEditing
          */
         private void buttonClone_Click(object sender, EventArgs e)
         {
-            int boundryNum = boundryList.Count, contentNum = contentArray.Length;
-            int pointNum = boundryNum + contentNum;
+            int contentNum = contentArray.Length;
+            // int boundryNum = boundryList.Count, 
+            // int pointNum = boundryNum + contentNum;
             resultImg = newTarImg.Copy();
 
             // To solve AX=B, get matrix A and B first
-            LA.Matrix<double> matA = LA.Matrix<double>.Build.Sparse(pointNum, pointNum);
-            LA.Matrix<double> matB = LA.Matrix<double>.Build.Dense(pointNum, 1);
+            var matA = LA.Matrix<double>.Build.Sparse(contentNum, contentNum);
+            var matB = LA.Double.Vector.Build.Dense(contentNum);
 
             // for color tunnel B, G, R
             for (int c = 0; c <= 2; ++c)
             {
-                // Set sparse matrix A to zero
+                Console.WriteLine("Generate Matrix No. " + c);
+
+                // Set matrix A & B to zero
                 matA.Clear();
                 matB.Clear();
-
-                // id: 0~boundryNum-1: boundry point; boundryNum~pointNum-1: contentNum 
-                int id = 0;
 
                 // top, right, bottom, left
                 int[] dx = new int[] {-1, 0, 1, 0};
                 int[] dy = new int[] { 0, 1, 0, -1 };
                 List<Point> Np = new List<Point>();
-                foreach (Point boundryP in boundryList)
+
+                // Generate matrix A & B
+                for (int id = 0; id < contentNum; ++id)
                 {
-                    // Use equation No.7 in the paper
+                    // Use equation No.7 & No.8 in the paper
                     Np.Clear();
+                    Point oldP = contentArray[id];
+                    Point newP = new Point(oldP.X + biasX, oldP.Y + biasY);
                     for (int i = 0; i < 4; ++i)
                     {
-                        Point q = new Point(boundryP.X + dx[i] + biasX, boundryP.Y + dy[i] + biasY);
-                        if (q.X >= 0 && q.X < tarHeight && q.Y >= 0 && q.Y < tarWidth)
+                        Point newQ = new Point(newP.X + dx[i], newP.Y + dy[i]);
+                        if (newQ.X >= 0 && newQ.X < tarHeight && newQ.Y >= 0 && newQ.Y < tarWidth)
                         {
                             // Point q is inside the area
-                            Np.Add(q);
+                            Np.Add(newQ);
+                        }
+                    }
+                    matA.At(id, id, Np.Count);
+
+                    foreach (Point newQ in Np)
+                    {
+                        int qID = pointID[newQ.X - biasX, newQ.Y - biasY];
+                        // q is inside Sigma
+                        if (qID >= 0)
+                        {
+                            matA.At(id, qID, -1);
                         }
                     }
 
-                    matA.At(id, id, Np.Count);
-                    // TODO: other elements of the equation
+                    double Bi = 0;
+                    foreach (Point newQ in Np)
+                    {
+                        int qID = pointID[newQ.X - biasX, newQ.Y - biasY];
+                        // q is on the boundry
+                        if (qID == -1)
+                        {
+                            Bi += tarImg.Data[newQ.X, newQ.Y, c];
+                        }
+
+                        Point oldQ = new Point(newQ.X - biasX, newQ.Y - biasY);
+                        Bi += srcImg.Data[oldP.X, oldP.Y, c] - srcImg.Data[oldQ.X, oldQ.Y, c];
+                    }
+                    matB.At(id, Bi);
                 }
 
-                foreach (Point contentP in contentArray)
+                // Solve the sparse linear equation using BiCgStab (Bi-Conjugate Gradient Stabilized)
+                Console.WriteLine("Solve the equations.");
+                var fp = LA.Double.Vector.Build.Dense(contentNum);
+                BiCgStab solver = new BiCgStab();
+
+                // Choose stop criterias
+                // Learn about stop criteria from: wo80, http://mathnetnumerics.codeplex.com/discussions/404689
+                var stopCriterias = new List<IIterationStopCriterion<double>>()
                 {
-                    // Use equation No.8 in the paper
+                    new ResidualStopCriterion<double>(1e-5),
+                    new IterationCountStopCriterion<double>(1000),
+                    new DivergenceStopCriterion<double>(),
+                    new FailureStopCriterion<double>()
+                };
+
+                solver.Solve(matA, matB, fp, new Iterator<double>(stopCriterias), new DiagonalPreconditioner());
+                Console.WriteLine("Solved.");
+                // Console.WriteLine(fp);
+
+                // Set the color
+                for (int id = 0; id < contentNum; ++id)
+                {
+                    int color = (int)fp.At(id);
+                    if (color < 0)
+                        color = 0;
+                    if (color > 255)
+                        color = 255;
+                    resultImg.Data[contentArray[id].X + biasX, contentArray[id].Y + biasY, c] = (Byte)color;
                 }
             }
 
