@@ -26,16 +26,26 @@ namespace PoissonImageEditing
         private int                 srcWidth, srcHeight;
         private int                 tarWidth, tarHeight;
 
-        // Control flag for drawing boundry on the source image
+        // Control of drawing boundry on the source image
         private Image<Bgr, Byte>    newSrcImg;
         private bool                isDrawing;
         private List<Point>         clickList;
         private List<Point>         boundryList;
+        private int                 selWidth, selHeight;
 
         // List of content point, and mapping to id
         private List<Point>         contentList;
         private Point[]             contentArray;
         private int[,]              pointID;
+        private Point               selCenterPoint;
+
+        // Control of placing the selected image on the target image
+        private Image<Bgr, Byte>    newTarImg;
+        private bool                isPlacing;
+        private Point               placeCenterPoint;
+
+        // Bias from selected source image to the target image
+        private int                 biasX, biasY;
 
         public FormImageEditing()
         {
@@ -115,6 +125,11 @@ namespace PoissonImageEditing
                     {
                         // Get boundry list from the click list
                         Point A = clickList.ElementAt<Point>(0), B = clickList.ElementAt<Point>(1);
+                        selWidth = B.Y - A.Y + 1;
+                        selHeight = B.X - A.X + 1;
+                        selCenterPoint = new Point((A.X + B.X) / 2, (A.Y + B.Y) / 2);
+                        Console.WriteLine(String.Format("Selected: heightxwidth: {0}x{1}", selHeight, selWidth));
+
                         // Assume A:top-left, B:bottom-right
                         // +----------+
                         // +          +
@@ -179,6 +194,52 @@ namespace PoissonImageEditing
             isDrawing = false;
             if (srcImg != null)
                 pictureBoxA.Image = srcImg.ToBitmap();
+        }
+
+        private void buttonPlace_Click(object sender, EventArgs e)
+        {
+            isPlacing = true;
+            newTarImg = tarImg.Copy();
+        }
+
+        private void buttonClear2_Click(object sender, EventArgs e)
+        {
+            if (tarImg != null)
+                pictureBoxB.Image = tarImg.ToBitmap();
+        }
+
+        private void buttonClone_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void pictureBoxB_Click(object sender, EventArgs e)
+        {
+            if (isPlacing)
+            {
+                var mouseEvent = e as MouseEventArgs;
+                if (mouseEvent != null)
+                {
+                    newTarImg = tarImg.Copy();
+
+                    // Inverse to fit the order of OpenCV Point
+                    placeCenterPoint = new Point(mouseEvent.Y, mouseEvent.X);
+                    Console.WriteLine(String.Format("Place on <{0}, {1}>", placeCenterPoint.X, placeCenterPoint.Y));
+                    biasX = placeCenterPoint.X - selCenterPoint.X;
+                    biasY = placeCenterPoint.Y - selCenterPoint.Y;
+
+                    // Paint the selected image on the target
+                    foreach (Point point in contentArray)
+                    {
+                        int _x = point.X + biasX, _y = point.Y + biasY;
+                        if (_x >= 0 && _x < tarHeight && _y >= 0 && _y < tarWidth)
+                        {
+                            newTarImg[_x, _y] = srcImg[point.X, point.Y];
+                        }
+                    }
+                    pictureBoxB.Image = newTarImg.ToBitmap();
+                }
+            }
         }
     }
 }
