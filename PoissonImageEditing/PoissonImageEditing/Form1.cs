@@ -32,12 +32,18 @@ namespace PoissonImageEditing
         private List<Point>         clickList;
         private List<Point>         boundryList;
 
+        // List of content point, and mapping to id
+        private List<Point>         contentList;
+        private Point[]             contentArray;
+        private int[,]              pointID;
+
         public FormImageEditing()
         {
             InitializeComponent();
 
             clickList = new List<Point>();
             boundryList = new List<Point>();
+            contentList = new List<Point>();
         }
 
         private void Form1_Load(object sender, EventArgs e)
@@ -62,6 +68,9 @@ namespace PoissonImageEditing
                 // Display the image. 
                 // I(x, y, {B,G,R}): img.Data[x, y, {0,1,2}]. x: row No. y: col No.
                 pictureBoxA.Image = srcImg.ToBitmap();
+
+                // Initialize the mapping from coordinate to id
+                pointID = new int[srcHeight, srcWidth];
             }
         }
 
@@ -104,6 +113,7 @@ namespace PoissonImageEditing
                     // Rectangular version:
                     if (clickList.Count == 2)
                     {
+                        // Get boundry list from the click list
                         Point A = clickList.ElementAt<Point>(0), B = clickList.ElementAt<Point>(1);
                         // Assume A:top-left, B:bottom-right
                         // +----------+
@@ -130,6 +140,22 @@ namespace PoissonImageEditing
                             newSrcImg[B.X, j] = new Bgr(Color.Red);
                         }
 
+                        // Get content list and set the mapping
+                        int cntID = 0;
+                        contentList.Clear();
+                        for (int i = A.X + 1; i < B.X; ++i)
+                        {
+                            for (int j = A.Y + 1; j < B.Y; ++j)
+                            {
+                                contentList.Add(new Point(i, j));
+                                pointID[i, j] = cntID;
+                                ++cntID;
+                            }
+                        }
+                        contentArray = contentList.ToArray();
+                        Console.WriteLine("List: " + contentList.Count);
+                        Console.WriteLine("Array: " + contentArray.Length);
+
                         isDrawing = false;
                     }
 
@@ -148,6 +174,8 @@ namespace PoissonImageEditing
         {
             clickList.Clear();
             boundryList.Clear();
+            contentList.Clear();
+
             isDrawing = false;
             if (srcImg != null)
                 pictureBoxA.Image = srcImg.ToBitmap();
